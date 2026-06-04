@@ -44,8 +44,9 @@ android {
 }
 
 dependencies {
-    implementation(libs.mediapipe.tasks.vision)
-    implementation(libs.tensorflow.lite.gpu)
+    implementation(libs.litert)
+    implementation(libs.litert.gpu)
+    implementation(libs.litert.metadata)
     implementation(libs.androidx.navigation.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)

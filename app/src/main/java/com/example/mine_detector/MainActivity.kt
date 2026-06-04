@@ -50,7 +50,6 @@ import com.example.mine_detector.ui.theme.MinedetectorTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.mediapipe.tasks.components.containers.Detection
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -209,7 +208,7 @@ fun DetectionOverlay(detections: List<Detection>, frameWidth: Int, frameHeight: 
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             detections.forEach { detection ->
-                val boundingBox = detection.boundingBox()
+                val boundingBox = detection.boundingBox
                 val left = boundingBox.left * scaleX
                 val top = boundingBox.top * scaleY
                 val right = boundingBox.right * scaleX
@@ -225,13 +224,14 @@ fun DetectionOverlay(detections: List<Detection>, frameWidth: Int, frameHeight: 
         }
         
         detections.forEach { detection ->
-            val boundingBox = detection.boundingBox()
+            val boundingBox = detection.boundingBox
             val left = boundingBox.left * scaleX
             val top = boundingBox.top * scaleY
             
-            val label = detection.categories().firstOrNull()?.let {
-                "${it.categoryName()} ${(it.score() * 100).toInt()}%"
-            } ?: ""
+            val category = detection.categories.firstOrNull()
+            val label = if (category != null) {
+                "${category.label} ${(category.score * 100).toInt()}%"
+            } else ""
             
             if (label.isNotEmpty()) {
                 val leftDp = with(density) { left.toDp() }

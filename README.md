@@ -4,11 +4,11 @@ This is an app, that imports a .tflite model and uses it for live object detecti
 The main view includes:
 - live camera image
 - object bounding box and detection certainty
-- button at bottom for importing a .tflite model
-- button at bottom for opening settings view
+- bottom bar for importing a .tflite model and settings
 
 The settings view includes:
 - basic logs
+- vibration toggle
 - button for saving very detailed, advanced logs to device storage as file
 - two number input fields for specifying downsampling resolution, pre-filled with 320x320
 
@@ -17,63 +17,61 @@ On successful object detection, the smartphone shall vibrate.
 
 ## 📱 1. Project Profile & Target Hardware Baseline
 * **Target Audience:** Modern consumer smartphones with a premium performance floor.
-* **Minimum SDK:** API 34 (Android 14.0). This enforces a modern, high-performance runtime, eliminating pre-Android 14 structural adjustments, while retaining massive market coverage for current active hardware.
-* **UI Framework:** 100% Declarative Jetpack Compose (Material 3). Absolute restriction: Do NOT generate legacy XML layout architectures, ViewGroups, or traditional view-bindings.
-* **Build System:** Kotlin DSL (`.kts`) utilizing strict typing, mapping all dependencies directly inside Version Catalogs (`libs.versions.toml`).
+* **Minimum SDK:** API 34 (Android 14.0).
+* **UI Framework:** 100% Declarative Jetpack Compose (Material 3).
+* **Build System:** Kotlin DSL (`.kts`) utilizing Version Catalogs (`libs.versions.toml`).
 
 ---
 
 ## ⚡ 2. Core Visual AI Inference Pipeline Blueprint
-The application implements a cross-platform, real-time on-device computer vision pipeline. Because the app runs on diverse, modern SoC architectures (Snapdragon, MediaTek, Exynos, Tensor), the framework must handle runtime hardware assignments defensively:
-
----
+The application implements a real-time on-device computer vision pipeline using **LiteRT** (formerly TensorFlow Lite).
 
 ```
 [Camera Sensor] 
        │
-       ├──► Use Case A: Preview Viewport ──► Jetpack Compose UI (1080p Full Frame)
+       ├──► Use Case A: Preview Viewport ──► Jetpack Compose UI
        │
-       └──► Use Case B: ImageAnalysis ────► Center-Crop (1:1 Square) ──► Downsample (320x320)
-                                                                              │
-   ┌──────────────────────────────────────────────────────────────────────────┘
+       └──► Use Case B: ImageAnalysis ────► Center-Crop ──► Downsample
+                                                                 │
+   ┌─────────────────────────────────────────────────────────────┘
    ▼
-[LiteRT Runtime Initialization Pipeline]
+[LiteRT Interpreter Pipeline]
    │
-   ├──► Try Route 1: GPU Delegate (Vulkan / OpenCL) ──► Success? ──► Execute on SoC GPU
-   │                                                                     │
-   └──► Try Route 2 (Fallback): XNNPACK CPU Delegate ◄───────────────────┘ (If GPU Fails)
-                                     │
-[Bounding Box Canvas] ◄── Coordinate Transformation ◄────────────────────┘
+   ├──► Hardware: GPU Delegate (Vulkan/OpenCL) with CPU Fallback
+   │
+   ├──► 16 KB Alignment: Native support for Android 15+ devices
+   │
+   ├──► Pre-processing: Standard Android APIs (Matrix, Bitmap)
+   │
+   ├──► Inference: Manual Input/Output Tensor Mapping
+   │
+   └──► Post-processing: Parsing [Locations, Classes, Scores, Count] tensors
 ```
 
-### Stage 1: Ingestion & High-Performance Stream Sharing (CameraX)
-* Bind two distinct Use Cases to the CameraProvider lifecycle context concurrently:
-    1. **`Preview` Use Case:** Targets full-frame resolution matching the screen aspect ratio, piped straight into a Compose `PreviewView` layout.
-    2. **`ImageAnalysis` Use Case:** Utilizes `ResolutionSelector` to request low-overhead inputs (e.g., VGA 640x480). This must execute exclusively on a dedicated background execution thread pool (`Executors.newSingleThreadExecutor()`) to decouple processing from the UI framework.
+### Stage 1: Ingestion (CameraX)
+* `ImageAnalysis` Use Case captures frames in `RGBA_8888` format.
+* Processing executes on a dedicated background thread pool.
 
-### Stage 2: Balanced Pre-Processing & Scaling
-* **Geometry Guardrail:** To prevent stretching or geometric distortions that compromise model evaluation, crop incoming frames to a **1:1 square aspect ratio from the center visual coordinates** before scaling down to the model's native input canvas (e.g., 320x320).
-* Leverage `MediaPipe ImageBuilder` or direct `TensorImage` allocations to bypass memory-copy overhead (Zero-copy layout conversion preferred).
+### Stage 2: Manual Pre-Processing (Standard Android APIs)
+* Frames are converted to `Bitmap` and processed using standard Android `Matrix` and `Bitmap.createScaledBitmap`.
+* Pixels are manually loaded into a `DirectByteBuffer` in RGB format for the LiteRT Interpreter.
+* Center-cropping is performed to maintain aspect ratio before scaling to the target resolution.
 
-### Stage 3: Cross-Vendor Hardware Routing via LiteRT (Google AI Edge)
-* Load local `.tflite` model bundles packaged with integrated Metadata.
-* **Dynamic Delegate Strategy:** To maximize performance on diverse modern GPUs, implement a robust try-catch compilation cascade:
-    1. Attempt to initialize the **LiteRT GPU Delegate** (targeting Vulkan/OpenCL) to compute vector layers directly on the device's graphics processing unit.
-    2. If compilation fails at runtime due to vendor driver limitations, catch the exception cleanly and fall back to the **XNNPACK-backed CPU Delegate**. Configure multi-threading explicitly mapped to the host processing pool (`setNumThreads(Runtime.getRuntime().availableProcessors() / 2)`).
-* All inference operations run strictly within an asynchronous Kotlin Coroutines scope (`Dispatchers.Default`), preserving 60 FPS UI responsiveness.
+### Stage 3: Low-Level Inference (Interpreter)
+* Utilizes **LiteRT 1.4.2+** for 16 KB page size compatibility on modern Android devices.
+* Employs `litert-metadata` for label extraction from the `.tflite` model's `labelmap.txt`.
+* Maps multiple output tensors: Locations [1, 10, 4], Classes [1, 10], Scores [1, 10], and Number of Detections [1].
 
-### Stage 4: Dynamic Coordinate Transformation & Compose Drawing
-* The model produces relative layout bounding dimensions ([0.0, 1.0]).
-* Calculate a transformation scaling matrix to translate those coordinates dynamically back onto the actual aspect ratio, sizing, and orientation of the active Jetpack Compose view canvas.
-* Render boundary overlays utilizing standard Jetpack Compose `Canvas` layouts drawn directly on top of the viewfinder panel.
+### Stage 4: Coordinate Transformation & Compose Drawing
+* Translates relative model coordinates back to the Compose view canvas.
+* Renders overlays using Jetpack Compose `Canvas`.
 
 ---
 
 ## 🛠️ 3. Rules of Engagement for the Gemini Agent
 
-When writing, refactoring, or reviewing code in this repository, you must observe these operational instructions:
-
-1. **Zero-Allocation Analysis:** Never allocate fresh memory buffers, custom data wrappers, or objects inside the continuous `ImageAnalysis.Analyzer` loop. All structures must be instantiated once at configuration time and recycled.
-2. **UDF Architecture Compliance:** Expose inference analysis streams through a lifecycle-aware Android `ViewModel` utilizing Unidirectional Data Flow (UDF). Expose data as an immutable state wrapper (`StateFlow`).
-3. **Defensive Processing:** Ensure software fallback paths are robust. The application must never crash or hang if a hardware-accelerated delegate fails to load or experiences a thermal block.
-4. **No Legacy Code Overlap:** Completely ignore old backwards-compatibility wrappers, old permission flows, or obsolete compilation checks required by pre-Android 14 operating systems.
+1. **Low-Level Control:** Use the base TFLite Interpreter instead of high-level task libraries for better compatibility with custom/quantized models.
+2. **Zero-Allocation Analysis:** Minimize fresh memory allocations inside the `analyze` loop. Use `TensorImage` and recycled buffers where possible.
+3. **UDF Architecture Compliance:** Expose inference results through a `ViewModel` utilizing Unidirectional Data Flow (UDF) and `StateFlow`.
+4. **Defensive Processing:** Ensure robust fallback from GPU to CPU delegates.
+5. **No Legacy Code Overlap:** Target Android 14+ exclusively.

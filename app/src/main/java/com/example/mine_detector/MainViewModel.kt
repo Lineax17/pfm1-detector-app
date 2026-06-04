@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.mediapipe.tasks.components.containers.Detection
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
@@ -30,8 +29,7 @@ class MainViewModel(
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
-    val analyzer = ObjectDetectionAnalyzer(context) { result, width, height ->
-        val detections = result.detections()
+    val analyzer = ObjectDetectionAnalyzer { detections, width, height ->
         if (detections.isNotEmpty() && _state.value.vibrateEnabled) {
             onDetectionVibrate()
         }
@@ -39,33 +37,39 @@ class MainViewModel(
     }
 
     init {
+        // Monitor settings
         viewModelScope.launch {
             combine(
                 settingsRepository.resWidth,
                 settingsRepository.resHeight,
-                settingsRepository.vibrateOnDetection,
-                AppLogger.logs
-            ) { width, height, vibrate, logs ->
-                DataPack(width, height, vibrate, logs)
-            }.collect { pack ->
-                _state.update { it.copy(
-                    resWidth = pack.width, 
-                    resHeight = pack.height, 
-                    vibrateEnabled = pack.vibrate,
-                    logs = pack.logs
-                ) }
-                analyzer.updateConfig(_state.value.modelFile, pack.width, pack.height)
+            ) { width, height ->
+                Pair(width, height)
+            }.collect { (width, height) ->
+                _state.update { it.copy(resWidth = width, resHeight = height) }
+                analyzer.updateConfig(_state.value.modelFile)
+            }
+        }
+
+        // Monitor logs separately to avoid configuration loops
+        viewModelScope.launch {
+            AppLogger.logs.collect { logs ->
+                _state.update { it.copy(logs = logs) }
+            }
+        }
+
+        // Monitor vibration setting
+        viewModelScope.launch {
+            settingsRepository.vibrateOnDetection.collect { enabled ->
+                _state.update { it.copy(vibrateEnabled = enabled) }
             }
         }
     }
-
-    private data class DataPack(val width: Int, val height: Int, val vibrate: Boolean, val logs: List<String>)
 
     fun onModelImported(context: Context, uri: Uri) {
         viewModelScope.launch {
             val file = copyUriToInternalStorage(context, uri)
             _state.update { it.copy(modelFile = file) }
-            analyzer.updateConfig(file, _state.value.resWidth, _state.value.resHeight)
+            analyzer.updateConfig(file)
             AppLogger.log("Model imported: ${file.name}")
         }
     }
