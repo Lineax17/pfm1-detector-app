@@ -1,0 +1,82 @@
+# ====================================================================
+# Android Studio / IntelliJ IDE Settings
+# ====================================================================
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/vcs.xml
+.idea/dictionary.xml
+.idea/shelf/
+.idea/caches/
+.idea/modules.xml
+.idea/navEditor.xml
+*.iml
+*.iws
+*.ipr
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ====================================================================
+# Build Outputs & Caches
+# ====================================================================
+.gradle/
+build/
+**/build/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+output-metadata.json
+
+# ====================================================================
+# Kotlin & Compiler Specifics
+# ====================================================================
+.kotlin/
+*.kotlin_module
+
+# ====================================================================
+# Local / Environment Configurations (CRITICAL: Contains SDK Paths)
+# ====================================================================
+local.properties
+
+# ====================================================================
+# Security & Signing (NEVER commit your production keystores!)
+# ====================================================================
+*.jks
+*.keystore
+*.p12
+
+# ====================================================================
+# Optional: Secrets Management
+# ====================================================================
+# If you use a local secrets properties file to load API keys dynamically
+secrets.properties
+
+# If you prefer keeping production configuration assets out of public repos
+# app/src/main/assets/production_model.tflite
+
+# ====================================================================
+# Log Files
+# ====================================================================
+*.log
+
+# ====================================================================
+# OS-Specific Garbage (Prevents team cross-platform friction)
+# ====================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.lnk
