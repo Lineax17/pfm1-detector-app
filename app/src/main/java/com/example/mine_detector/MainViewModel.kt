@@ -17,6 +17,7 @@ data class AppState(
     val resWidth: Int = 320,
     val resHeight: Int = 320,
     val vibrateEnabled: Boolean = true,
+    val detectionThreshold: Float = 0.3f,
     val logs: List<String> = emptyList()
 )
 
@@ -63,6 +64,14 @@ class MainViewModel(
                 _state.update { it.copy(vibrateEnabled = enabled) }
             }
         }
+
+        // Monitor threshold setting
+        viewModelScope.launch {
+            settingsRepository.detectionThreshold.collect { threshold ->
+                _state.update { it.copy(detectionThreshold = threshold) }
+                analyzer.threshold = threshold
+            }
+        }
     }
 
     fun onModelImported(context: Context, uri: Uri) {
@@ -83,6 +92,12 @@ class MainViewModel(
     fun toggleVibration(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateVibration(enabled)
+        }
+    }
+
+    fun updateThreshold(threshold: Float) {
+        viewModelScope.launch {
+            settingsRepository.updateThreshold(threshold)
         }
     }
 

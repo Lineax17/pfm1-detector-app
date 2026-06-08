@@ -14,11 +14,13 @@ class SettingsRepository(private val context: Context) {
         val RES_WIDTH = intPreferencesKey("res_width")
         val RES_HEIGHT = intPreferencesKey("res_height")
         val VIBRATE_ON_DETECTION = androidx.datastore.preferences.core.booleanPreferencesKey("vibrate_on_detection")
+        val DETECTION_THRESHOLD = androidx.datastore.preferences.core.floatPreferencesKey("detection_threshold")
     }
 
     val resWidth: Flow<Int> = context.dataStore.data.map { it[RES_WIDTH] ?: 320 }
     val resHeight: Flow<Int> = context.dataStore.data.map { it[RES_HEIGHT] ?: 320 }
     val vibrateOnDetection: Flow<Boolean> = context.dataStore.data.map { it[VIBRATE_ON_DETECTION] ?: true }
+    val detectionThreshold: Flow<Float> = context.dataStore.data.map { it[DETECTION_THRESHOLD] ?: 0.3f }
 
     suspend fun updateResolution(width: Int, height: Int) {
         context.dataStore.edit {
@@ -30,6 +32,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateVibration(enabled: Boolean) {
         context.dataStore.edit {
             it[VIBRATE_ON_DETECTION] = enabled
+        }
+    }
+
+    suspend fun updateThreshold(threshold: Float) {
+        context.dataStore.edit {
+            it[DETECTION_THRESHOLD] = threshold
         }
     }
 }

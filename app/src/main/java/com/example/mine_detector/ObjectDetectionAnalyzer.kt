@@ -36,6 +36,8 @@ class ObjectDetectionAnalyzer(
     private var modelType: ModelType = ModelType.SSD
     private var isProcessing = false
     
+    var threshold: Float = 0.3f
+    
     private var inputBuffer: ByteBuffer? = null
     private var intValues: IntArray? = null
 
@@ -206,7 +208,7 @@ class ObjectDetectionAnalyzer(
 
         val detections = mutableListOf<Detection>()
         for (i in 0 until numDetections[0].toInt()) {
-            if (outputScores[0][i] > 0.3f) {
+            if (outputScores[0][i] > threshold) {
                 val box = outputLocations[0][i]
                 val rect = RectF(
                     box[1] * targetWidth,
@@ -250,7 +252,7 @@ class ObjectDetectionAnalyzer(
                 }
             }
 
-            if (maxScore > 0.3f) {
+            if (maxScore > threshold) {
                 var cx = if (isTransposed) output[0][i][0] else output[0][0][i]
                 var cy = if (isTransposed) output[0][i][1] else output[0][1][i]
                 var w = if (isTransposed) output[0][i][2] else output[0][2][i]

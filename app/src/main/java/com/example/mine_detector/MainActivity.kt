@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -341,6 +343,34 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     checked = state.vibrateEnabled,
                     onCheckedChange = { viewModel.toggleVibration(it) }
                 )
+            }
+
+            HorizontalDivider()
+
+            Text("Detection Threshold: ${(state.detectionThreshold * 100).toInt()}%", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = { 
+                    viewModel.updateThreshold((state.detectionThreshold - 0.01f).coerceAtLeast(0.1f)) 
+                }) {
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease")
+                }
+                
+                Slider(
+                    value = state.detectionThreshold,
+                    onValueChange = { viewModel.updateThreshold(it) },
+                    valueRange = 0.1f..0.9f,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = { 
+                    viewModel.updateThreshold((state.detectionThreshold + 0.01f).coerceAtMost(0.9f))
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Increase")
+                }
             }
 
             HorizontalDivider()
