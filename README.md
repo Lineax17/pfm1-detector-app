@@ -1,5 +1,6 @@
 # PFM-1 Detector App
-This is an app, that imports a .tflite model and uses it for live object detection - in this case the PFM-1 antipersonnel mine. 
+This is an app, that imports a .tflite model and uses it for live object detection - in this case the PFM-1 antipersonnel mine.  
+To try the app go to [releases](https://mygit.th-deg.de/bi20450/pfm1-detector-app/-/releases).
 
 <p align="center">
   <img src="Screenshot_20260608-193257.png" width="300" />
@@ -15,6 +16,7 @@ The settings view includes:
 - basic logs
 - vibration toggle
 - sound toggle
+- notification interval slider
 - detection threshold slider
 - button for saving logs to device storage as text file
 - two number input fields for specifying downsampling resolution, pre-filled with 320x320
