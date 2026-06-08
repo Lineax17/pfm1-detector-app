@@ -1,5 +1,5 @@
 # PFM-1 Detector App
-This is an app, that imports a .tflite model and uses it for live object detection. 
+This is an app, that imports a .tflite model and uses it for live object detection - in this case the PFM-1 antipersonnel mine. 
 
 The main view includes:
 - live camera image
