@@ -251,10 +251,19 @@ class ObjectDetectionAnalyzer(
             }
 
             if (maxScore > 0.3f) {
-                val cx = if (isTransposed) output[0][i][0] else output[0][0][i]
-                val cy = if (isTransposed) output[0][i][1] else output[0][1][i]
-                val w = if (isTransposed) output[0][i][2] else output[0][2][i]
-                val h = if (isTransposed) output[0][i][3] else output[0][3][i]
+                var cx = if (isTransposed) output[0][i][0] else output[0][0][i]
+                var cy = if (isTransposed) output[0][i][1] else output[0][1][i]
+                var w = if (isTransposed) output[0][i][2] else output[0][2][i]
+                var h = if (isTransposed) output[0][i][3] else output[0][3][i]
+
+                // Automatically detect if coordinates are normalized (0-1) or pixel-based
+                // If the largest dimension is < 2, it's highly likely normalized.
+                if (cx <= 1.5f && w <= 1.5f) {
+                    cx *= targetWidth
+                    cy *= targetHeight
+                    w *= targetWidth
+                    h *= targetHeight
+                }
 
                 val rect = RectF(
                     (cx - w / 2),
@@ -266,6 +275,10 @@ class ObjectDetectionAnalyzer(
                 val label = labels.getOrNull(classId) ?: "Object ($classId)"
                 detections.add(Detection(rect, listOf(Category(label, maxScore))))
             }
+        }
+
+        if (detections.isNotEmpty()) {
+            // AppLogger.log("Detected ${detections.size} candidates before NMS")
         }
 
         return nms(detections)

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -121,13 +122,30 @@ fun MainScreen(navController: NavController, viewModel: MainViewModel) {
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             if (cameraPermissionState.status.isGranted) {
-                CameraPreview(viewModel.analyzer)
-                DetectionOverlay(state.detections, state.frameWidth, state.frameHeight)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clipToBounds()
+                        .background(Color.Black)
+                ) {
+                    CameraPreview(viewModel.analyzer)
+                    DetectionOverlay(state.detections, state.frameWidth, state.frameHeight)
+                }
             } else {
-                Text("Camera permission required", modifier = Modifier.align(Alignment.Center))
+                Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                    Text("Camera permission required")
+                }
             }
+            
+            // Push remaining content (if any) to the bottom
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
@@ -141,13 +159,21 @@ fun CameraPreview(analyzer: ObjectDetectionAnalyzer) {
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx)
+            val previewView = PreviewView(ctx).apply {
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            }
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder()
                     .setResolutionSelector(
                         ResolutionSelector.Builder()
-                            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                            .setResolutionStrategy(
+                                ResolutionStrategy(
+                                    Size(1080, 1080), 
+                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER
+                                )
+                            )
                             .build()
                     )
                     .build().also {
@@ -214,11 +240,12 @@ fun DetectionOverlay(detections: List<Detection>, frameWidth: Int, frameHeight: 
                 val right = boundingBox.right * scaleX
                 val bottom = boundingBox.bottom * scaleY
 
-                drawRect(
-                    color = Color.Red,
+                drawRoundRect(
+                    color = Color(0xFFFF5252), // Bright Coral Red
                     topLeft = androidx.compose.ui.geometry.Offset(left, top),
                     size = androidx.compose.ui.geometry.Size(right - left, bottom - top),
-                    style = Stroke(width = 4f)
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f),
+                    style = Stroke(width = 6f)
                 )
             }
         }
