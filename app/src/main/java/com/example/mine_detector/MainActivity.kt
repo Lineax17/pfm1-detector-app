@@ -4,6 +4,8 @@ import android.Manifest
 import android.os.Bundle
 import android.os.Vibrator
 import android.os.VibrationEffect
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -56,14 +58,28 @@ import com.google.accompanist.permissions.rememberPermissionState
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
+    private var toneGenerator: ToneGenerator? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        try {
+            toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+        } catch (e: Exception) {
+            AppLogger.log("Failed to create ToneGenerator: ${e.message}")
+        }
+
         val settingsRepository = SettingsRepository(applicationContext)
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return MainViewModel(applicationContext, settingsRepository, ::vibrate) as T
+                return MainViewModel(
+                    applicationContext, 
+                    settingsRepository, 
+                    { vibrate() },
+                    { playSound() }
+                ) as T
             }
         }
         setContent {
@@ -81,6 +97,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun vibrate() {
+        val vibrator = getSystemService(Vibrator::class.java)
+        vibrator?.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun playSound() {
+        try {
+            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+        } catch (e: Exception) {
+            // Ignore if tone generator fails
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        toneGenerator?.release()
     }
 }
 
@@ -222,11 +256,6 @@ fun CameraPreview(analyzer: ObjectDetectionAnalyzer) {
     )
 }
 
-fun MainActivity.vibrate() {
-    val vibrator = getSystemService(Vibrator::class.java)
-    vibrator?.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
-}
-
 @Composable
 fun DetectionOverlay(detections: List<Detection>, frameWidth: Int, frameHeight: Int) {
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -353,6 +382,18 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 )
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Sound on Detection", style = MaterialTheme.typography.titleMedium)
+                Switch(
+                    checked = state.soundEnabled,
+                    onCheckedChange = { viewModel.toggleSound(it) }
+                )
+            }
+
             HorizontalDivider()
 
             Text("Detection Threshold: ${(state.detectionThreshold * 100).toInt()}%", style = MaterialTheme.typography.titleMedium)
@@ -408,4 +449,3 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
     }
 }
-

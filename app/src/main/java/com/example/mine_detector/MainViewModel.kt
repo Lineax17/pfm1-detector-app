@@ -18,6 +18,7 @@ data class AppState(
     val resWidth: Int = 320,
     val resHeight: Int = 320,
     val vibrateEnabled: Boolean = true,
+    val soundEnabled: Boolean = true,
     val detectionThreshold: Float = 0.3f,
     val logs: List<String> = emptyList()
 )
@@ -25,15 +26,22 @@ data class AppState(
 class MainViewModel(
     context: Context,
     private val settingsRepository: SettingsRepository,
-    private val onDetectionVibrate: () -> Unit = {}
+    private val onDetectionVibrate: () -> Unit = {},
+    private val onDetectionSound: () -> Unit = {}
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
+    private var lastFeedbackTime = 0L
+    private val feedbackCooldown = 1000L // 1 second cooldown
+
     val analyzer = ObjectDetectionAnalyzer { detections, width, height ->
-        if (detections.isNotEmpty() && _state.value.vibrateEnabled) {
-            onDetectionVibrate()
+        val currentTime = System.currentTimeMillis()
+        if (detections.isNotEmpty() && (currentTime - lastFeedbackTime > feedbackCooldown)) {
+            if (_state.value.vibrateEnabled) onDetectionVibrate()
+            if (_state.value.soundEnabled) onDetectionSound()
+            lastFeedbackTime = currentTime
         }
         _state.update { it.copy(detections = detections, frameWidth = width, frameHeight = height) }
     }
@@ -71,6 +79,13 @@ class MainViewModel(
             }
         }
 
+        // Monitor sound setting
+        viewModelScope.launch {
+            settingsRepository.soundOnDetection.collect { enabled ->
+                _state.update { it.copy(soundEnabled = enabled) }
+            }
+        }
+
         // Monitor threshold setting
         viewModelScope.launch {
             settingsRepository.detectionThreshold.collect { threshold ->
@@ -102,6 +117,12 @@ class MainViewModel(
     fun toggleVibration(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateVibration(enabled)
+        }
+    }
+
+    fun toggleSound(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSound(enabled)
         }
     }
 
