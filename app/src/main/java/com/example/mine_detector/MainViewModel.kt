@@ -17,8 +17,9 @@ data class AppState(
     val modelFile: File? = null,
     val resWidth: Int = 320,
     val resHeight: Int = 320,
-    val vibrateEnabled: Boolean = true,
-    val soundEnabled: Boolean = true,
+    val vibrateEnabled: Boolean = false,
+    val soundEnabled: Boolean = false,
+    val notificationInterval: Int = 1000,
     val detectionThreshold: Float = 0.3f,
     val logs: List<String> = emptyList()
 )
@@ -26,21 +27,21 @@ data class AppState(
 class MainViewModel(
     context: Context,
     private val settingsRepository: SettingsRepository,
-    private val onDetectionVibrate: () -> Unit = {},
-    private val onDetectionSound: () -> Unit = {}
+    private val onNotificationVibrate: () -> Unit = {},
+    private val onNotificationSound: () -> Unit = {}
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     private var lastFeedbackTime = 0L
-    private val feedbackCooldown = 1000L // 1 second cooldown
+    private var feedbackCooldown = 1000L
 
     val analyzer = ObjectDetectionAnalyzer { detections, width, height ->
         val currentTime = System.currentTimeMillis()
         if (detections.isNotEmpty() && (currentTime - lastFeedbackTime > feedbackCooldown)) {
-            if (_state.value.vibrateEnabled) onDetectionVibrate()
-            if (_state.value.soundEnabled) onDetectionSound()
+            if (_state.value.vibrateEnabled) onNotificationVibrate()
+            if (_state.value.soundEnabled) onNotificationSound()
             lastFeedbackTime = currentTime
         }
         _state.update { it.copy(detections = detections, frameWidth = width, frameHeight = height) }
@@ -86,6 +87,14 @@ class MainViewModel(
             }
         }
 
+        // Monitor notification interval setting
+        viewModelScope.launch {
+            settingsRepository.notificationInterval.collect { interval ->
+                _state.update { it.copy(notificationInterval = interval) }
+                feedbackCooldown = interval.toLong()
+            }
+        }
+
         // Monitor threshold setting
         viewModelScope.launch {
             settingsRepository.detectionThreshold.collect { threshold ->
@@ -123,6 +132,12 @@ class MainViewModel(
     fun toggleSound(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSound(enabled)
+        }
+    }
+
+    fun updateNotificationInterval(interval: Int) {
+        viewModelScope.launch {
+            settingsRepository.updateNotificationInterval(interval)
         }
     }
 

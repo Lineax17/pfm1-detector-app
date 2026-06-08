@@ -77,8 +77,8 @@ class MainActivity : ComponentActivity() {
                 return MainViewModel(
                     applicationContext, 
                     settingsRepository, 
-                    { vibrate() },
-                    { playSound() }
+                    onNotificationVibrate = { vibrate() },
+                    onNotificationSound = { playSound() }
                 ) as T
             }
         }
@@ -392,6 +392,34 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     checked = state.soundEnabled,
                     onCheckedChange = { viewModel.toggleSound(it) }
                 )
+            }
+
+            HorizontalDivider()
+
+            Text("Notification Interval: ${state.notificationInterval}ms", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = { 
+                    viewModel.updateNotificationInterval((state.notificationInterval - 50).coerceAtLeast(50)) 
+                }) {
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease Interval")
+                }
+                
+                Slider(
+                    value = state.notificationInterval.toFloat(),
+                    onValueChange = { viewModel.updateNotificationInterval(it.toInt()) },
+                    valueRange = 50f..2000f,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = { 
+                    viewModel.updateNotificationInterval((state.notificationInterval + 50).coerceAtMost(2000))
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Increase Interval")
+                }
             }
 
             HorizontalDivider()
