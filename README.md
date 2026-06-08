@@ -1,6 +1,11 @@
 # PFM-1 Detector App
 This is an app, that imports a .tflite model and uses it for live object detection - in this case the PFM-1 antipersonnel mine. 
 
+<p align="center">
+  <img src="Screenshot_20260608-193257.png" width="300" />
+  <img src="Screenshot_20260608-193337.png" width="300" />
+</p>
+
 The main view includes:
 - live camera image
 - object bounding box and detection certainty
@@ -17,6 +22,8 @@ The settings view includes:
 Both the model importing and logs saving utilize the system file manager.  
 On successful object detection, the smartphone vibrates and/or makes a sound.
 
-### Screenshots
-![Screenshot_20260608-193257.png](Screenshot_20260608-193257.png) 
-![Screenshot_20260608-193337.png](Screenshot_20260608-193337.png)
+
+### Under the hood
+
+The app uses LiteRT. The pipeline looks like:  
+Get camera feed -> center-crop -> downsample -> LiteRT
