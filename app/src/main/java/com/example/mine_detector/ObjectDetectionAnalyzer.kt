@@ -18,6 +18,7 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import kotlinx.coroutines.*
 
 class ObjectDetectionAnalyzer(
     private val onResults: (List<Detection>, Int, Int) -> Unit
@@ -43,14 +44,21 @@ class ObjectDetectionAnalyzer(
 
     // YOLO specific state
     private var yoloOutputShape: IntArray? = null
+    private var lastErrorMessage: String? = null
+    
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var configJob: Job? = null
 
     fun updateConfig(file: File?) {
+        configJob?.cancel()
         if (file == null) {
             close()
             return
         }
         
-        setupInterpreter(file)
+        configJob = scope.launch {
+            setupInterpreter(file)
+        }
     }
 
     private fun setupInterpreter(file: File) {
@@ -181,9 +189,14 @@ class ObjectDetectionAnalyzer(
                 }
                 
                 onResults(detections, targetWidth, targetHeight)
+                lastErrorMessage = null
 
             } catch (e: Exception) {
-                AppLogger.log("Inference error: ${e.message}")
+                val msg = e.message ?: "Unknown error"
+                if (msg != lastErrorMessage) {
+                    AppLogger.log("Inference error: $msg")
+                    lastErrorMessage = msg
+                }
             } finally {
                 isProcessing = false
                 image.close()

@@ -214,7 +214,11 @@ fun CameraPreview(analyzer: ObjectDetectionAnalyzer) {
             }, ContextCompat.getMainExecutor(ctx))
             previewView
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        onRelease = {
+            cameraProviderFuture.get().unbindAll()
+            executor.shutdown()
+        }
     )
 }
 

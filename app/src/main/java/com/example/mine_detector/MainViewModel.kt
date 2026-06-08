@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
@@ -37,15 +38,18 @@ class MainViewModel(
         _state.update { it.copy(detections = detections, frameWidth = width, frameHeight = height) }
     }
 
-    init {
-        // Monitor settings
+    @OptIn(FlowPreview::class)
+    private fun startMonitoring() {
+        // Monitor settings - Debounced to prevent rapid reconfigurations
         viewModelScope.launch {
             combine(
                 settingsRepository.resWidth,
                 settingsRepository.resHeight,
             ) { width, height ->
                 Pair(width, height)
-            }.collect { (width, height) ->
+            }
+            .debounce(500) // Wait for user to stop spamming
+            .collect { (width, height) ->
                 _state.update { it.copy(resWidth = width, resHeight = height) }
                 analyzer.updateConfig(_state.value.modelFile)
             }
@@ -53,9 +57,11 @@ class MainViewModel(
 
         // Monitor logs separately to avoid configuration loops
         viewModelScope.launch {
-            AppLogger.logs.collect { logs ->
-                _state.update { it.copy(logs = logs) }
-            }
+            AppLogger.logs
+                .sample(500) // Only update logs UI twice a second
+                .collect { logs ->
+                    _state.update { it.copy(logs = logs) }
+                }
         }
 
         // Monitor vibration setting
@@ -72,6 +78,10 @@ class MainViewModel(
                 analyzer.threshold = threshold
             }
         }
+    }
+
+    init {
+        startMonitoring()
     }
 
     fun onModelImported(context: Context, uri: Uri) {
