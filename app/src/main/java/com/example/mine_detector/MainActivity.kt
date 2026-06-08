@@ -259,7 +259,11 @@ fun DetectionOverlay(detections: List<Detection>, frameWidth: Int, frameHeight: 
             
             val category = detection.categories.firstOrNull()
             val label = if (category != null) {
-                "${category.label} ${(category.score * 100).toInt()}%"
+                if (category.label.isNotEmpty()) {
+                    "${category.label} ${(category.score * 100).toInt()}%"
+                } else {
+                    "${(category.score * 100).toInt()}%"
+                }
             } else ""
             
             if (label.isNotEmpty()) {

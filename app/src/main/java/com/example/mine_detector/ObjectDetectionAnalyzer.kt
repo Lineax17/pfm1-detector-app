@@ -218,7 +218,7 @@ class ObjectDetectionAnalyzer(
                 )
                 
                 val classId = outputClasses[0][i].toInt()
-                val label = labels.getOrNull(classId) ?: "Unknown ($classId)"
+                val label = labels.getOrNull(classId) ?: ""
                 
                 detections.add(Detection(rect, listOf(Category(label, outputScores[0][i]))))
             }
@@ -274,7 +274,7 @@ class ObjectDetectionAnalyzer(
                     (cy + h / 2)
                 )
                 
-                val label = labels.getOrNull(classId) ?: "Object ($classId)"
+                val label = labels.getOrNull(classId) ?: ""
                 detections.add(Detection(rect, listOf(Category(label, maxScore))))
             }
         }
