@@ -16,3 +16,7 @@ The settings view includes:
 
 Both the model importing and logs saving utilize the system file manager.  
 On successful object detection, the smartphone vibrates and/or makes a sound.
+
+### Screenshots
+![Screenshot_20260608-193257.png](Screenshot_20260608-193257.png) 
+![Screenshot_20260608-193337.png](Screenshot_20260608-193337.png)
